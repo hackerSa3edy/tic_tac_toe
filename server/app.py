@@ -14,7 +14,7 @@ from models.game import Game
 
 def create_app():
     # Import your modules
-    from api import auth_bp, user_bp, init_api
+    from api import auth_bp, user_bp, game_bp, init_api
     from multiplayer_socketIO.events import init_game_model
     from errors import error
     from database import init_db
@@ -52,6 +52,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(user_bp, url_prefix='/api/user')
+    app.register_blueprint(game_bp, url_prefix='/api/user')
     app.register_blueprint(error)
     app.register_blueprint(web_bp)
 

@@ -1,5 +1,6 @@
 from .routes.auth_routes import auth_bp
 from .routes.user_routes import user_bp
+from .routes.game_routes import game_bp
 
 def init_api(auth, user):
     from .routes.auth_routes import init_auth_routes
