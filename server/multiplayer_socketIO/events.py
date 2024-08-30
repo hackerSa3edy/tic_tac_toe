@@ -1,4 +1,3 @@
-
 from flask_socketio import emit, join_room, leave_room
 from flask import request, session
 from . import socketio
@@ -11,7 +10,7 @@ def handle_connect():
 
     # Manually manage session data
     if player_id is None:
-        emit('response', {'message': 'Please log in.'}, to=request.sid)
+        emit('error', {'message': 'Please log in.'}, to=request.sid)
         return False
 
     # Check if the player is already in a waiting or ongoing game
