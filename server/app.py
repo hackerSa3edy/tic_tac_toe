@@ -10,10 +10,12 @@ from middleware import auth_middleware
 from multiplayer_socketIO import socketio
 from models.auth import Auth
 from models.user import User
+from models.game import Game
 
 def create_app():
     # Import your modules
     from api import auth_bp, user_bp, init_api
+    from multiplayer_socketIO.events import init_game_model
     from errors import error
     from database import init_db
     from config import get_config
@@ -69,8 +71,15 @@ def create_app():
         app,
         manage_session=False,
         cors_allowed_origins=app.config["CORS_CONFIG"]["CORS_ORIGINS"] if app.config["CORS_SUPPORTS_CREDENTIALS"].lower() == 'true' else None,
-        cors_credentials=True,
+        cors_credentials=app.config["CORS_SUPPORTS_CREDENTIALS"].lower() == 'true',
         )
+
+    # Initialize Game model
+    game = Game(app.db)
+    init_game_model(game)
+
+    # Delete ongoing or waiting games on server start
+    game.delete_ongoing_or_waiting_games()
 
     # Apply middleware
     auth_middleware(app)
@@ -78,10 +87,6 @@ def create_app():
     return app
 
 app = create_app()
-
-@app.route('/')
-def main_route():
-    return "hello friend!"
 
 if __name__ == '__main__':
     # app.run(host="127.0.0.1", port="3000", debug=True)
