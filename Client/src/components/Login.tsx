@@ -11,14 +11,14 @@ const Login: FC = () => {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/auth/login', {
+      const response = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password }),
         credentials: 'include', // Include credentials to save cookies, only in cross-origin requests
-        // credentials: 'same-origin', only for same-origin requests
+        // credentials: 'same-origin', //only for same-origin requests
       });
 
       const data = await response.json();
@@ -56,7 +56,7 @@ const Login: FC = () => {
 
   return (
     <>
-      <img src={Logo} alt="Logo" className="logo" />
+      <img src={Logo} alt="Logo" className="logo w-[60%] mt-20 md:mt-0 md:w-full" />
 
       <div className="wrapper">
         <form onSubmit={handleSubmit}>

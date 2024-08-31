@@ -1,145 +1,202 @@
 import React, { useState, useEffect, useCallback } from "react";
-import io from 'socket.io-client';
+import { useNavigate } from "react-router-dom";
+import io, { Socket } from "socket.io-client";
 import styled from "styled-components";
 import {
   PLAYER_X,
   PLAYER_O,
   SQUARE_DIMS,
-  DRAW,
   GAME_STATES,
   DIMENSIONS,
-  GAME_MODES,
 } from "./constants";
 import Board from "./Board";
-import { switchPlayer } from "./utils";
 import { ResultModal } from "./ResultModal";
 import { border } from "./styles";
+import gameOverSoundAsset from "../../assets/sounds/game_over.wav";
+import clickSoundAsset from "../../assets/sounds/click.wav";
+import boardImage from "../../assets/Images/board.png";
 
-const arr = new Array(DIMENSIONS ** 2).fill(null);
-const board = new Board();
+// Types
+interface UserInfo {
+  game_played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
 
 interface Props {
   squares?: Array<number | null>;
 }
-interface GameData {
-  player: number;
-  game_id: string;
-}
 
-interface MoveMessage {
-  index: number;
-  player: number;
-}
+// Constants
+const INITIAL_GRID = new Array(DIMENSIONS ** 2).fill(null);
+const board = new Board();
 
-const TicTacToe_multi = ({ squares = arr }: Props) => {
-  const [players, setPlayers] = useState<Record<string, number | null>>({
-    human: null,
-    ai: null,
-  });
-  const [gameState, setGameState] = useState(GAME_STATES.notStarted);
+// Sound setup
+const gameOverSound = new Audio(gameOverSoundAsset);
+gameOverSound.volume = 0.2;
+const clickSound = new Audio(clickSoundAsset);
+clickSound.volume = 0.5;
+
+const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
+  const navigate = useNavigate();
+
+  // State
+  const [gameState, setGameState] = useState(GAME_STATES.waiting);
+  const [playerSymbol, setPlayerSymbol] = useState<number | null>(null);
+  const [opponentSymbol, setOpponentSymbol] = useState<number | null>(null);
+  const [opponent, setOpponent] = useState<string | null>(null);
+  const [currentTurn, setCurrentTurn] = useState<number | null>(null);
   const [grid, setGrid] = useState(squares);
   const [winner, setWinner] = useState<string | null>(null);
-  const [nextMove, setNextMove] = useState<null | number>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [mode, setMode] = useState(GAME_MODES.medium);
-  const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
-  const [gameid, setGameid] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [gameId, setGameId] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
+  // Socket setup
   useEffect(() => {
-    const newSocket = io('http://127.0.0.1:3000', {
-      withCredentials: true, // Required for cross-origin socket events
-    });
-
+    const newSocket = io("http://localhost:3000/", { withCredentials: true });
     setSocket(newSocket);
 
-    newSocket.on('connect', () => {
-      console.log('Socket connection established.');
-      console.log('Socket ID:', newSocket.id); // Now socket.id should be defined
+    newSocket.on("connect", () => {
+      console.log("Socket connection established. ID:", newSocket.id);
     });
-    console.log('Socket connection established.'); // printed twice use effect is fucked lamo fix it
+
+    newSocket.on('error', (data) => {
+      setError(data.message);
+    });
+
     return () => {
-        newSocket.close();
+      newSocket.close();
     };
   }, []);
 
+  // Game logic
   useEffect(() => {
-    if (socket) {
-      socket.emit('join_queue');
-      console.log('joined queue waiting.....');
-      console.log(socket.id);
+    if (!socket) return;
 
-      // socket.on('game_id', (data) => {
-      //   console.log('GAME_ID', data);
-      //   setGameid(data);
-      // });
-
-      socket.on('start_game', (data: GameData) => {
-        console.log('Starting game.....', data);
-        setPlayers({ human: data.player, ai: data.player === 1 ? 2 : 1 });
-        setGameState(GAME_STATES.inProgress);
-        console.log('STATTEEEEEE', gameState, GAME_STATES.inProgress); // see this line in console i set it to started but it's not started lol
-        setNextMove(PLAYER_X);
-        setGameid(data.game_id);
-      });
-
-      socket.on('move', (msg: MoveMessage) => {
-        console.log('SOCKET', msg.index, msg, msg.player === 1 ? 2 : 1);
-        move(msg.index, msg.player);
-        setNextMove(msg.player === 1 ? 2 : 1);
-      });
-
-      console.log('Event listeners set up.');
-
-      return () => {
-        socket.off('start_game');
-        socket.off('move');
-      };
-    }
-  }, [socket]);
-
-
-  /**
-   * On every move, check if there is a winner. If yes, set game state to over and open result modal
-   */
-  useEffect(() => {
-    const boardWinner = board.getWinner(grid);
-
-    const declareWinner = (winner: number) => {
-      let winnerStr;
-      switch (winner) {
-        case PLAYER_X:
-          winnerStr = "Player X wins!";
-          break;
-        case PLAYER_O:
-          winnerStr = "Player O wins!";
-          break;
-        case DRAW:
-        default:
-          winnerStr = "It's a draw";
-      }
-      setGameState(GAME_STATES.over);
-      setWinner(winnerStr);
-      // Slight delay for the modal so there is some time to see the last move
-      setTimeout(() => setModalOpen(true), 300);
+    const setupGame = () => {
+      socket.emit("join_game");
+      console.log("Joining game...");
     };
 
-    if (boardWinner !== null && gameState !== GAME_STATES.over) {
-      declareWinner(boardWinner);
-    }
-  }, [gameState, grid, nextMove]);
+    const handleGameJoined = (data: { game_id: string }) => {
+      setGameId(data.game_id);
+      setPlayerSymbol(PLAYER_X);
+      setGameState(GAME_STATES.waiting);
+      console.log("You: ", PLAYER_X, "Game id: ", data.game_id);
+    };
 
-  /**
-   * Set the grid square with respective player that made the move. Only make a move when the game is in progress.
-   * useCallback is necessary to prevent unnecessary recreation of the function, unless gameState changes, since it is
-   * being tracked in useEffect
-   * @type {Function}
-   */
+    const handleOpponentJoined = (data: { opponent: string }) => {
+      setOpponent(data.opponent);
+      setOpponentSymbol(PLAYER_O);
+      setGameState(GAME_STATES.inProgress);
+      setCurrentTurn(PLAYER_X);
+      console.log("opponent: ", PLAYER_O);
+    };
+
+    const handleGameStarted = (data: { game_id: string; opponent: string }) => {
+      setGameId(data.game_id);
+      setOpponentSymbol(PLAYER_X);
+      setPlayerSymbol(PLAYER_O);
+      setCurrentTurn(PLAYER_X);
+      setOpponent(data.opponent);
+      setGameState(GAME_STATES.inProgress);
+      console.log("Game id: ", data.game_id, "You: ", PLAYER_O, "opponent: ", PLAYER_X);
+    };
+
+    const handleMoveMade = (data: { position: number }) => {
+      console.log("Move made by opponent", opponentSymbol);
+      move(data.position, opponentSymbol);
+      setCurrentTurn(currentTurn => currentTurn === PLAYER_X ? PLAYER_O : PLAYER_X);
+    };
+
+    const handleGameOver = (data: { result: string; winner: string }) => {
+      setGameState(GAME_STATES.over);
+      setWinner(data.result === 'draw' ? 'draw' : (data.winner === opponent ? opponent : 'You') + ' won!');
+    };
+
+    setupGame();
+
+    socket.on('game_joined', handleGameJoined);
+    socket.on('opponent_joined', handleOpponentJoined);
+    socket.on('game_started', handleGameStarted);
+    socket.on("move_made", handleMoveMade);
+    socket.on('game_over', handleGameOver);
+
+    return () => {
+      socket.off("game_joined");
+      socket.off("opponent_joined");
+      socket.off("game_started");
+      socket.off("move_made");
+      socket.off("game_over");
+    };
+  }, [socket, opponent, opponentSymbol]);
+
+  // User profile fetch
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch("/api/user/profile", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const data = await response.json();
+        setUserInfo(data);
+      } catch (error) {
+        console.log(error instanceof Error ? error.message : "An unknown error occurred");
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  useEffect(() => {
+    if (error) {
+      alert(error);
+    }
+  }, [error]);
+
+  // Winner check
+  useEffect(() => {
+    board.getWinner(grid);
+
+    if (gameState === GAME_STATES.over) {
+    //   const winnerStr = boardWinner === DRAW ? "It's a draw" : `Player ${boardWinner === PLAYER_X ? 'X' : 'O'} wins!`;
+      setWinner(winner);
+      setTimeout(() => setModalOpen(true), 300);
+    }
+  }, [gameState]);
+
+  // Sound effects
+  useEffect(() => {
+    if (currentTurn !== null) {
+      clickSound.play();
+    }
+  }, [currentTurn]);
+
+  useEffect(() => {
+    if (gameState !== GAME_STATES.inProgress) {
+      gameOverSound.play();
+    }
+  }, [gameState]);
+
+  // Move function
   const move = useCallback(
     (index: number, player: number | null) => {
-      console.log('MOVE',index, player, gameState);
-      if (player !== null || gameState === GAME_STATES.inProgress) { // changed to or to disable states check
-        console.log('MOVE_VALIDDDDD',index, player);
-        setGrid((grid) => {
+      if (player !== null && gameState === GAME_STATES.inProgress) {
+        setGrid(grid => {
           const gridCopy = grid.concat();
           gridCopy[index] = player;
           return gridCopy;
@@ -149,128 +206,88 @@ const TicTacToe_multi = ({ squares = arr }: Props) => {
     [gameState]
   );
 
-  // useEffect(() => {
-  //   if (socket) {
-  //     const handleBackendAI = (msg: any) => {
-  //       console.log('SOCKET', msg.index, msg);
-
-  //       const index = msg.index;
-
-  //       if (index !== null && !grid[index]) {
-  //         if (players.ai !== null) {
-  //           move(index, players.ai);
-  //         }
-  //         setNextMove(players.human);
-  //       }
-  //     };
-
-  //     socket.on('backendAI', handleBackendAI);
-
-  //     return () => {
-  //       socket.off('backendAI', handleBackendAI);
-  //     };
-  //   }
-  // }, [socket, grid, players.ai, players.human, move]);
-  /**
-   * Make AI move when it's AI's turn
-   */
-  // useEffect(() => {
-  //   if (
-  //     nextMove !== null &&
-  //     nextMove === players.ai &&
-  //     gameState !== GAME_STATES.over
-  //   ) {
-  //     // AI move will trigger socket move
-  //     // No need to call socketMove here; it's handled in the useEffect above
-  //   }
-  // }, [nextMove, players.ai, gameState]);
-
+  // Human move function
   const humanMove = (index: number) => {
-    if (!grid[index] && nextMove === players.human) {
-      move(index, players.human);
-      setNextMove(players.ai);
-      console.log('HUMAN', index); // SEND TO SOCKETS // 1 is X,  0 is O
-      const data = {
-        player: players.human,
-        index: index,
-        game_id: gameid,
-      };
-      if (socket) {
-        socket.emit('humanMove', data);
-      }
+    if (!grid[index] && currentTurn === playerSymbol) {
+      console.log("MOVE_VALID", index, playerSymbol);
+      move(index, playerSymbol);
+      setCurrentTurn(playerSymbol === PLAYER_O ? PLAYER_X : PLAYER_O);
 
+      if (socket) {
+        socket.emit("make_move", { position: index, game_id: gameId });
+      }
     }
   };
 
-  const choosePlayer = (option: number) => {
-    setPlayers({ human: option, ai: switchPlayer(option) });
-    setGameState(GAME_STATES.inProgress);
-    setNextMove(PLAYER_X);
-  };
-
+  // New game function
   const startNewGame = () => {
-    setGameState(GAME_STATES.notStarted);
-    setGrid(arr);
+    setGameState(GAME_STATES.waiting);
+    setGrid(INITIAL_GRID);
     setModalOpen(false);
+
+    if (socket) {
+      socket.emit("join_game");
+      console.log("Rejoining game...");
+    }
   };
 
-  const changeMode = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setMode(e.target.value);
+  // Modal close function
+  const handleClose = () => {
+    setModalOpen(false);
+    navigate("/");
   };
 
-  return gameState === GAME_STATES.notStarted ? (
-    <div>
-      <Inner>
-        <p>Select difficulty</p>
-        <select onChange={changeMode} value={mode}>
-          {Object.keys(GAME_MODES).map((key) => {
-            const gameMode = GAME_MODES[key];
-            return (
-              <option key={gameMode} value={gameMode}>
-                {key}
-              </option>
-            );
-          })}
-        </select>
-      </Inner>
-      <Inner>
-        <p>Choose your player</p>
-        <ButtonRow>
-          <button onClick={() => choosePlayer(PLAYER_X)}>X</button>
-          <p>or</p>
-          <button onClick={() => choosePlayer(PLAYER_O)}>O</button>
-        </ButtonRow>
-      </Inner>
+  // Render functions
+  const renderUserInfo = () => (
+    userInfo ? (
+      <div className="flex justify-center items-center w-screen">
+        <div className="absolute top-[2%] sm:w-[70%] md:w-[35%] py-4 px-10 text-center bg-opacity-50 rounded-full grid grid-cols-2 gap-4 items-center justify-around bg-slate-700">
+          <p className="font-bold text-white text-xl">Games Played: {userInfo.game_played}</p>
+          <p className="font-bold text-white text-xl">Wins: {userInfo.wins}</p>
+          <p className="font-bold text-white text-xl">Losses: {userInfo.losses}</p>
+          <p className="font-bold text-white text-xl">Draws: {userInfo.draws}</p>
+        </div>
+      </div>
+    ) : (
+      <p>Loading user information...</p>
+    )
+  );
+
+  const renderGrid = () => (
+    grid.map((value, index) => (
+      <Square
+        data-testid={`square_${index}`}
+        key={index}
+        onClick={() => humanMove(index)}
+      >
+        {value !== null && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
+      </Square>
+    ))
+  );
+
+  return gameState === GAME_STATES.waiting ? (
+    <div className="text-white font-newrocker">
+      <p>Waiting For Opponent</p>
     </div>
   ) : (
-    <Container dims={DIMENSIONS}>
-      {grid.map((value, index) => {
-        const isActive = value !== null;
-
-        return (
-          <Square
-            data-testid={`square_${index}`}
-            key={index}
-            onClick={() => humanMove(index)}
-          >
-            {isActive && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
-          </Square>
-        );
-      })}
-      <Strikethrough
-        styles={
-          gameState === GAME_STATES.over ? board.getStrikethroughStyles() : ""
-        }
-      />
-      <ResultModal
-        isOpen={modalOpen}
-        winner={winner}
-        close={() => setModalOpen(false)}
-        startNewGame={startNewGame}
-      />
-    </Container>
+    <>
+      {renderUserInfo()}
+      <Container dims={DIMENSIONS}>
+        {renderGrid()}
+        <Strikethrough
+          styles={gameState === GAME_STATES.over ? board.getStrikethroughStyles() : ""}
+        />
+        <ResultModal
+          isOpen={modalOpen}
+          winner={winner}
+          close={handleClose}
+          startNewGame={startNewGame}
+        />
+      </Container>
+    </>
   );
 };
+
 
 const Container = styled.div<{ dims: number }>`
   display: flex;
@@ -278,6 +295,18 @@ const Container = styled.div<{ dims: number }>`
   width: ${({ dims }) => `${dims * (SQUARE_DIMS + 5)}px`};
   flex-flow: wrap;
   position: relative;
+  font-family: "ArtNouveauCaps", sans-serif;
+  font-weight: bold;
+  color: white;
+  background-image: url(${boardImage});
+  background-size: cover;
+  background-repeat: no-repeat;
+  filter: brightness(0) invert(1);
+  transform: scale(1.5);
+
+  @media (max-width: 768px) {
+    transform: scale(1);
+  }
 `;
 
 const Square = styled.div`
@@ -297,19 +326,6 @@ Square.displayName = "Square";
 
 const Marker = styled.p`
   font-size: 68px;
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  width: 150px;
-  justify-content: space-between;
-`;
-
-const Inner = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 30px;
 `;
 
 const Strikethrough = styled.div<{ styles: string | null }>`

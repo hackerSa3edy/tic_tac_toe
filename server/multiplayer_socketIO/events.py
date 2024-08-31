@@ -10,15 +10,16 @@ def handle_connect():
 
     # Manually manage session data
     if player_id is None:
+        print('None session', request.sid, player_id)
         emit('error', {'message': 'Please log in.'}, to=request.sid)
         return False
 
-    print('Client connected', request.sid, player_id)
     # Check if the player is already in a waiting or ongoing game
     if GAMES.is_player_in_game(player_id):
         emit('error', {'message': 'You are already in a waiting or ongoing game.'}, to=request.sid)
         return False
 
+    print('Client connected', request.sid, player_id)
     return True
 
 @socketio.on('join_game')
@@ -59,20 +60,20 @@ def handle_make_move(data):
         if game and game['status'] == 'ongoing' and game['current_turn'] == player_id:
             if game['board'][position] == '':
                 game_over = GAMES.process_move(game, game_id, player_id, position)
+                emit('move_made', {'player': player_id, 'position': position}, room=str(game_id), skip_sid=request.sid)
                 if game_over:
                     # game_over => {'result': 'win', 'winner': winner_id}
                     # or
                     # game_over => {'result': 'draw'}
                     emit('game_over', game_over, room=str(game_id))
+                    print('Game over', game_over)
                     leave_room(str(game_id))
-                else:
-                    emit('move_made', {'player': player_id, 'position': position}, room=str(game_id), skip_sid=request.sid)
     except Exception as e:
         emit('error', {'message': f'An error occured while making the move: {str(e)}'}, to=request.sid)
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    # print('Client disconnected', request.sid, session.get('username'))
+    print('Client disconnected', request.sid, session.get('username'))
     game = GAMES.handle_disconnect(session.get('username'))
     if game:
         emit('game_over', {
