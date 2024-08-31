@@ -13,6 +13,7 @@ def handle_connect():
         emit('error', {'message': 'Please log in.'}, to=request.sid)
         return False
 
+    print('Client connected', request.sid, player_id)
     # Check if the player is already in a waiting or ongoing game
     if GAMES.is_player_in_game(player_id):
         emit('error', {'message': 'You are already in a waiting or ongoing game.'}, to=request.sid)
@@ -21,8 +22,9 @@ def handle_connect():
     return True
 
 @socketio.on('join_game')
-def handle_join_game(data):
+def handle_join_game():
     player_id = session.get('username', None)
+    print('Join game', player_id)
 
     # Check if the player is already in a waiting or ongoing game
     if player_id and GAMES.is_player_in_game(player_id):
@@ -36,7 +38,7 @@ def handle_join_game(data):
         game_id = waiting_game['_id']
         GAMES.join_game(game_id, player_id)
         join_room(str(game_id))
-        emit('game_joined', {'game_id': str(game_id), 'opponent': waiting_game['players']['player1']}, room=request.sid)
+        emit('game_started', {'game_id': str(game_id), 'opponent': waiting_game['players']['player1']}, room=request.sid)
         emit('opponent_joined', {'opponent': player_id}, room=str(game_id), skip_sid=request.sid)
     else:
         # Create a new game and join it.
@@ -46,6 +48,7 @@ def handle_join_game(data):
 
 @socketio.on('make_move')
 def handle_make_move(data):
+    print('Make move', data)
     try:
         game_id = ObjectId(data['game_id'])
         player_id = session.get('username')  # Get the username from the session
@@ -61,6 +64,9 @@ def handle_make_move(data):
                     # or
                     # game_over => {'result': 'draw'}
                     emit('game_over', game_over, room=str(game_id))
+                    leave_room(str(game_id))
+                else:
+                    emit('move_made', {'player': player_id, 'position': position}, room=str(game_id), skip_sid=request.sid)
     except Exception as e:
         emit('error', {'message': f'An error occured while making the move: {str(e)}'}, to=request.sid)
 
