@@ -10,8 +10,7 @@ export const SCORES: Record<string, number> = {
 };
 export const SQUARE_DIMS = 100;
 export const GAME_STATES = {
-  notStarted: "not_started",
+  waiting: "waiting",
   inProgress: "in_progress",
   over: "over",
 };
-

@@ -13,14 +13,14 @@ const Register: FC = () => {
 
     // Send the Register request to the backend
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('http://localhost:3000/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, username, password }),
-        // credentials: 'include', // Include credentials to save cookies, only in cross-origin requests
-        credentials: 'same-origin',// only for same-origin requests
+        credentials: 'include', // Include credentials to save cookies, only in cross-origin requests
+        // credentials: 'same-origin',// only for same-origin requests
       });
 
       const data = await response.json();

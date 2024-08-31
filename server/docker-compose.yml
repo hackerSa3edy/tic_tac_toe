@@ -1,4 +1,4 @@
-name: tic-tac-toe-backend-mongodb
+name: tic-tac-toe-project
 services:
   backend:
     hostname: backend

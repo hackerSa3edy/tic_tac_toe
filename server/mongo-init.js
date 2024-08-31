@@ -16,10 +16,12 @@ function createCollectionIfNotExists(collectionName, options) {
         print(`Collection ${collectionName} created.`);
     } else {
         print(`Collection ${collectionName} already exists.`);
-        // Optionally update the validator if the collection already exists
+        // Update the validator if the collection already exists
         db.runCommand({
             collMod: collectionName,
-            validator: options.validator
+            validator: options.validator,
+            validationLevel: "strict",
+            validationAction: "error"
         });
         print(`Updated validator for ${collectionName}.`);
     }
@@ -58,25 +60,41 @@ createCollectionIfNotExists("games", {
     validator: {
         $jsonSchema: {
             bsonType: "object",
-            required: ["player1", "player2", "board", "current_turn", "status", "created_at"],
+            required: ["players", "status", "created_at", "board"],
             properties: {
-                player1: { bsonType: "objectId" },
-                player2: { bsonType: "objectId" },
-                board: { bsonType: "array" },
-                current_turn: { bsonType: "objectId" },
-                winner: { bsonType: ["objectId", "null"] },
+                players: {
+                    bsonType: "object",
+                    required: ["player1"],
+                    properties: {
+                        player1: { bsonType: "string" },
+                        player2: { bsonType: "string" }
+                    }
+                },
+                status: {
+                    bsonType: "string",
+                    enum: ["waiting", "ongoing", "completed"]
+                },
+                winner: { bsonType: "string" },
+                loser: { bsonType: "string" },
                 is_draw: { bsonType: "bool" },
-                status: { enum: ["Ongoing", "Completed"] },
+                notes: { bsonType: "string" },
                 created_at: { bsonType: "date" },
-                end_at: { bsonType: ["date", "null"] }
+                ended_at: { bsonType: "date" },
+                current_turn: { bsonType: "string" },
+                board: {
+                    bsonType: "array",
+                    items: {
+                        bsonType: "string",
+                        enum: ["X", "O", ""]
+                    }
+                }
             }
         }
     }
 });
 
-db.games.createIndex({ "player1": 1 });
-db.games.createIndex({ "player2": 1 });
 db.games.createIndex({ "status": 1 });
+db.games.createIndex({ "status": 1, "players.player1": 1, "players.player2": 1 });
 db.games.createIndex({ "created_at": -1 });
 
 // Leaderboard Collection

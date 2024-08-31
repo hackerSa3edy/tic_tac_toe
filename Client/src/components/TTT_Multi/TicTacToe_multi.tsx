@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import io from "socket.io-client";
+import io, { Socket } from "socket.io-client";
 import styled from "styled-components";
 import {
   PLAYER_X,
   PLAYER_O,
   SQUARE_DIMS,
-  DRAW,
   GAME_STATES,
   DIMENSIONS,
 } from "./constants";
@@ -17,6 +16,7 @@ import gameOverSoundAsset from "../../assets/sounds/game_over.wav";
 import clickSoundAsset from "../../assets/sounds/click.wav";
 import boardImage from "../../assets/Images/board.png";
 
+// Types
 interface UserInfo {
   game_played: number;
   wins: number;
@@ -24,47 +24,118 @@ interface UserInfo {
   draws: number;
 }
 
-type ErrorType = string | null;
+interface Props {
+  squares?: Array<number | null>;
+}
 
+// Constants
+const INITIAL_GRID = new Array(DIMENSIONS ** 2).fill(null);
+const board = new Board();
+
+// Sound setup
 const gameOverSound = new Audio(gameOverSoundAsset);
 gameOverSound.volume = 0.2;
 const clickSound = new Audio(clickSoundAsset);
 clickSound.volume = 0.5;
 
-const arr = new Array(DIMENSIONS ** 2).fill(null);
-const board = new Board();
-
-interface Props {
-  squares?: Array<number | null>;
-}
-interface GameData {
-  player: number;
-  game_id: string;
-}
-
-interface MoveMessage {
-  index: number;
-  player: number;
-}
-
-const TicTacToe_multi = ({ squares = arr }: Props) => {
-  const [players, setPlayers] = useState<Record<string, number | null>>({
-    human: null,
-    ai: null,
-  });
+const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
   const navigate = useNavigate();
-  const [gameState, setGameState] = useState(GAME_STATES.notStarted);
+
+  // State
+  const [gameState, setGameState] = useState(GAME_STATES.waiting);
+  const [playerSymbol, setPlayerSymbol] = useState<number | null>(null);
+  const [opponentSymbol, setOpponentSymbol] = useState<number | null>(null);
+  const [opponent, setOpponent] = useState<string | null>(null);
+  const [currentTurn, setCurrentTurn] = useState<number | null>(null);
   const [grid, setGrid] = useState(squares);
   const [winner, setWinner] = useState<string | null>(null);
-  const [nextMove, setNextMove] = useState<null | number>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [socket, setSocket] = useState<ReturnType<typeof io> | null>(null);
-  const [gameid, setGameid] = useState<string | null>(null);
-  const [reset, setReset] = useState<boolean>(false)
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [gameId, setGameId] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [error, setError] = useState<ErrorType>(null);
-  console.log(error || "NO errors");
+  const [error, setError] = useState<string | null>(null);
 
+  // Socket setup
+  useEffect(() => {
+    const newSocket = io("http://localhost:3000/", { withCredentials: true });
+    setSocket(newSocket);
+
+    newSocket.on("connect", () => {
+      console.log("Socket connection established. ID:", newSocket.id);
+    });
+
+    newSocket.on('error', (data) => {
+      setError(data.message);
+    });
+
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  // Game logic
+  useEffect(() => {
+    if (!socket) return;
+
+    const setupGame = () => {
+      socket.emit("join_game");
+      console.log("Joining game...");
+    };
+
+    const handleGameJoined = (data: { game_id: string }) => {
+      setGameId(data.game_id);
+      setPlayerSymbol(PLAYER_X);
+      setGameState(GAME_STATES.waiting);
+      console.log("You: ", PLAYER_X, "Game id: ", data.game_id);
+    };
+
+    const handleOpponentJoined = (data: { opponent: string }) => {
+      setOpponent(data.opponent);
+      setOpponentSymbol(PLAYER_O);
+      setGameState(GAME_STATES.inProgress);
+      setCurrentTurn(PLAYER_X);
+      console.log("opponent: ", PLAYER_O);
+    };
+
+    const handleGameStarted = (data: { game_id: string; opponent: string }) => {
+      setGameId(data.game_id);
+      setOpponentSymbol(PLAYER_X);
+      setPlayerSymbol(PLAYER_O);
+      setCurrentTurn(PLAYER_X);
+      setOpponent(data.opponent);
+      setGameState(GAME_STATES.inProgress);
+      console.log("Game id: ", data.game_id, "You: ", PLAYER_O, "opponent: ", PLAYER_X);
+    };
+
+    const handleMoveMade = (data: { position: number }) => {
+      console.log("Move made by opponent", opponentSymbol);
+      move(data.position, opponentSymbol);
+      setCurrentTurn(currentTurn => currentTurn === PLAYER_X ? PLAYER_O : PLAYER_X);
+    };
+
+    const handleGameOver = (data: { result: string; winner: string }) => {
+      setGameState(GAME_STATES.over);
+      setWinner(data.result === 'draw' ? 'draw' : (data.winner === opponent ? opponent : 'You') + ' won!');
+    };
+
+    setupGame();
+
+    socket.on('game_joined', handleGameJoined);
+    socket.on('opponent_joined', handleOpponentJoined);
+    socket.on('game_started', handleGameStarted);
+    socket.on("move_made", handleMoveMade);
+    socket.on('game_over', handleGameOver);
+
+    return () => {
+      socket.off("game_joined");
+      socket.off("opponent_joined");
+      socket.off("game_started");
+      socket.off("move_made");
+      socket.off("game_over");
+    };
+  }, [socket, opponent, opponentSymbol]);
+
+  // User profile fetch
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -83,101 +154,49 @@ const TicTacToe_multi = ({ squares = arr }: Props) => {
 
         const data = await response.json();
         setUserInfo(data);
-        console.log(data);
       } catch (error) {
-        if (error instanceof Error) {
-          setError(error.message);
-          console.log(error.message);
-        } else {
-          setError("An unknown error occurred");
-          console.log("An unknown error occurred");
-        }
+        console.log(error instanceof Error ? error.message : "An unknown error occurred");
       }
     };
 
     fetchUserProfile();
-  }, [reset]);
-
-  useEffect(() => {
-    const newSocket = io("/", {
-      withCredentials: true,
-    });
-
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => {
-      console.log("Socket connection established.");
-      console.log("Socket ID:", newSocket.id);
-    });
-
-    return () => {
-      newSocket.close();
-    };
   }, []);
 
   useEffect(() => {
-    if (socket) {
-      socket.emit("join_queue");
-      console.log("joined queue waiting.....");
-
-      socket.on("start_game", (data: GameData) => {
-        console.log("Starting game.....", data);
-        setPlayers({ human: data.player, ai: data.player === 1 ? 2 : 1 });
-        setGameState(GAME_STATES.inProgress);
-        setNextMove(PLAYER_X);
-        setGameid(data.game_id);
-      });
-
-      socket.on("move", (msg: MoveMessage) => {
-        console.log("SOCKET", msg.index, msg, msg.player === 1 ? 2 : 1);
-        move(msg.index, msg.player);
-        setNextMove(msg.player === 1 ? 2 : 1);
-      });
-
-      return () => {
-        socket.off("start_game");
-        socket.off("move");
-      };
+    if (error) {
+      alert(error);
     }
-  }, [socket]);
+  }, [error]);
+
+  // Winner check
+  useEffect(() => {
+    board.getWinner(grid);
+
+    if (gameState === GAME_STATES.over) {
+    //   const winnerStr = boardWinner === DRAW ? "It's a draw" : `Player ${boardWinner === PLAYER_X ? 'X' : 'O'} wins!`;
+      setWinner(winner);
+      setTimeout(() => setModalOpen(true), 300);
+    }
+  }, [gameState]);
+
+  // Sound effects
+  useEffect(() => {
+    if (currentTurn !== null) {
+      clickSound.play();
+    }
+  }, [currentTurn]);
 
   useEffect(() => {
-    const boardWinner = board.getWinner(grid);
-
-    const declareWinner = (winner: number) => {
-      let winnerStr;
-      switch (winner) {
-        case PLAYER_X:
-          winnerStr = "Player X wins!";
-          break;
-        case PLAYER_O:
-          winnerStr = "Player O wins!";
-          break;
-        case DRAW:
-        default:
-          winnerStr = "It's a draw";
-      }
-      setGameState(GAME_STATES.over);
-      setWinner(winnerStr);
-      setTimeout(() => setModalOpen(true), 300);
-
-      // Update user stats
-      if (players.human !== null) {
-        updateUserStats(winner);
-      }
-    };
-
-    if (boardWinner !== null && gameState !== GAME_STATES.over) {
-      declareWinner(boardWinner);
+    if (gameState !== GAME_STATES.inProgress) {
+      gameOverSound.play();
     }
-  }, [gameState, grid, nextMove]);
+  }, [gameState]);
 
+  // Move function
   const move = useCallback(
     (index: number, player: number | null) => {
-      console.log("MOVE", index, player, gameState);
-      if (player !== null || gameState === GAME_STATES.inProgress) {
-        console.log("MOVE_VALIDDDDD", index, player);
-        setGrid((grid) => {
+      if (player !== null && gameState === GAME_STATES.inProgress) {
+        setGrid(grid => {
           const gridCopy = grid.concat();
           gridCopy[index] = player;
           return gridCopy;
@@ -187,140 +206,76 @@ const TicTacToe_multi = ({ squares = arr }: Props) => {
     [gameState]
   );
 
+  // Human move function
   const humanMove = (index: number) => {
-    if (!grid[index] && nextMove === players.human) {
-      move(index, players.human);
-      setNextMove(players.ai);
-      console.log("HUMAN", index);
+    if (!grid[index] && currentTurn === playerSymbol) {
+      console.log("MOVE_VALID", index, playerSymbol);
+      move(index, playerSymbol);
+      setCurrentTurn(playerSymbol === PLAYER_O ? PLAYER_X : PLAYER_O);
 
-      const data = {
-        player: players.human,
-        index: index,
-        game_id: gameid,
-      };
       if (socket) {
-        socket.emit("humanMove", data);
+        socket.emit("make_move", { position: index, game_id: gameId });
       }
     }
   };
 
-  // const choosePlayer = (option: number) => {
-  //   setPlayers({ human: option, ai: switchPlayer(option) });
-  //   setGameState(GAME_STATES.inProgress);
-  //   setNextMove(PLAYER_X);
-  // };
-
+  // New game function
   const startNewGame = () => {
-    setGameState(GAME_STATES.notStarted);
-    setGrid(arr);
+    setGameState(GAME_STATES.waiting);
+    setGrid(INITIAL_GRID);
     setModalOpen(false);
-    setReset(!reset);
 
     if (socket) {
-      socket.emit("join_queue");
-      console.log("Rejoining queue...");
+      socket.emit("join_game");
+      console.log("Rejoining game...");
     }
   };
 
-  useEffect(() => {
-    if (nextMove !== null) {
-      clickSound.play();
-    }
-  }, [nextMove]);
-
-  useEffect(() => {
-    if (gameState !== GAME_STATES.inProgress) {
-      gameOverSound.play();
-    }
-  }, [gameState]);
-
+  // Modal close function
   const handleClose = () => {
     setModalOpen(false);
     navigate("/");
   };
 
-  // Function to update user stats
-  const updateUserStats = async (winner: number) => {
-    if (!userInfo) return;
+  // Render functions
+  const renderUserInfo = () => (
+    userInfo ? (
+      <div className="flex justify-center items-center w-screen">
+        <div className="absolute top-[2%] sm:w-[70%] md:w-[35%] py-4 px-10 text-center bg-opacity-50 rounded-full grid grid-cols-2 gap-4 items-center justify-around bg-slate-700">
+          <p className="font-bold text-white text-xl">Games Played: {userInfo.game_played}</p>
+          <p className="font-bold text-white text-xl">Wins: {userInfo.wins}</p>
+          <p className="font-bold text-white text-xl">Losses: {userInfo.losses}</p>
+          <p className="font-bold text-white text-xl">Draws: {userInfo.draws}</p>
+        </div>
+      </div>
+    ) : (
+      <p>Loading user information...</p>
+    )
+  );
 
-    const isHumanWinner =
-      (players.human === PLAYER_X && winner === PLAYER_X) ||
-      (players.human === PLAYER_O && winner === PLAYER_O);
-    const isDraw = winner === DRAW;
+  const renderGrid = () => (
+    grid.map((value, index) => (
+      <Square
+        data-testid={`square_${index}`}
+        key={index}
+        onClick={() => humanMove(index)}
+      >
+        {value !== null && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
+      </Square>
+    ))
+  );
 
-    const updateData = {
-      wins: isHumanWinner,
-      losses: !isHumanWinner && !isDraw,
-      draws: isDraw,
-    };
-    console.log("New User Status:", updateData);
-    try {
-      const response = await fetch("/api/user/update_data", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(updateData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update user stats");
-      }
-
-      const data = await response.json();
-      setUserInfo(data);
-      console.log("User stats updated:", data);
-    } catch (error) {
-      console.error("Error updating user stats:", error);
-    }
-  };
-
-  return gameState === GAME_STATES.notStarted ? (
+  return gameState === GAME_STATES.waiting ? (
     <div className="text-white font-newrocker">
       <p>Waiting For Opponent</p>
     </div>
   ) : (
     <>
-      {userInfo ? (
-        <div className="flex justify-center items-center w-screen">
-          <div className="absolute top-[2%] sm:w-[70%] md:w-[35%] py-4 px-10 text-center bg-opacity-50 rounded-full grid grid-cols-2 gap-4 items-center justify-around bg-slate-700">
-            <p className="font-bold text-white text-xl">
-              Games Played: {userInfo.game_played}
-            </p>
-            <p className="font-bold text-white text-xl">
-              Wins: {userInfo.wins}
-            </p>
-            <p className="font-bold text-white text-xl">
-              Losses: {userInfo.losses}
-            </p>
-            <p className="font-bold text-white text-xl">
-              Draws: {userInfo.draws}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <p>Loading user information...</p>
-      )}
+      {renderUserInfo()}
       <Container dims={DIMENSIONS}>
-        {grid.map((value, index) => {
-          const isActive = value !== null;
-
-          return (
-            <Square
-              data-testid={`square_${index}`}
-              key={index}
-              onClick={() => humanMove(index)}
-            >
-              {isActive && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
-            </Square>
-          );
-        })}
+        {renderGrid()}
         <Strikethrough
-          styles={
-            gameState === GAME_STATES.over ? board.getStrikethroughStyles() : ""
-          }
+          styles={gameState === GAME_STATES.over ? board.getStrikethroughStyles() : ""}
         />
         <ResultModal
           isOpen={modalOpen}
@@ -332,6 +287,7 @@ const TicTacToe_multi = ({ squares = arr }: Props) => {
     </>
   );
 };
+
 
 const Container = styled.div<{ dims: number }>`
   display: flex;
