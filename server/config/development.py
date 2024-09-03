@@ -8,9 +8,12 @@ class DevelopmentConfig(BaseConfig):
         'CORS_ORIGINS' : os.getenv("CORS_ORIGINS", '*').split(','),
         'CORS_METHODS': ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'TRACE']
     }
+    MONGO_DB_HOSTNAME = os.getenv("MONGO_HOSTNAME", 'localhost')
 
-    # if BaseConfig.MONGO_DB_USERNAME is not None and BaseConfig.MONGO_DB_PASSWD is not None:
-    #     MONGO_URI = f"mongodb://{BaseConfig.MONGO_DB_USERNAME}:{BaseConfig.MONGO_DB_PASSWD}@localhost:27017/{BaseConfig.MONGO_DB_NAME}"
-    # else:
-    #     MONGO_URI = f"mongodb://localhost:27017/{BaseConfig.MONGO_DB_NAME}"
-    MONGO_URI=f"mongodb+srv://n0de:vrHzKrl5tudjFcyL@n0de.vuluj.mongodb.net/?retryWrites=true&w=majority&appName=n0de"
+    if BaseConfig.MONGO_DB_USERNAME != "" and BaseConfig.MONGO_DB_PASSWD != "":
+        credentials = f"{BaseConfig.MONGO_DB_USERNAME}:{BaseConfig.MONGO_DB_PASSWD}@"
+    else:
+        credentials = ""
+
+    if not BaseConfig.MONGO_URI:
+        MONGO_URI = f"mongodb://{credentials}{MONGO_DB_HOSTNAME}:27017/{BaseConfig.MONGO_DB_NAME}"
