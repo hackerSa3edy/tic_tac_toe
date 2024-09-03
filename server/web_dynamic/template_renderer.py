@@ -33,13 +33,17 @@ def status():
     data = { "status": "ok", "msg": "Hello Human!"}
     return jsonify(data)
 
-# @web_bp.route('/', defaults={'path': ''})
 @web_bp.route('/')
 def home():
     # if 'username' in session:
     #     return redirect(url_for('web_dynamic.serve', path='/tictactoe'))
     return send_from_directory(web_bp.static_folder, 'index.html')
 
+@web_bp.route('/modes')
+def modes():
+    return send_from_directory(web_bp.static_folder, 'index.html')
+
+@web_bp.route('/', defaults={'path': ''})
 @web_bp.route('/<path:path>')
 def serve(path):
     if path != "" and os.path.exists(web_bp.static_folder + '/' + path):

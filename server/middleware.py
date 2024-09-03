@@ -11,14 +11,17 @@ def auth_middleware(app):
     def check_auth():
         # Paths that don't require authentication
         open_paths = [
+            # Web routes
             url_for('web_dynamic.register'),
             url_for('web_dynamic.login'),
-            url_for('auth.users'),
-            url_for('auth.login'),
             url_for('web_dynamic.ttt_ai'),
             url_for('web_dynamic.tictactoe'),
             url_for('web_dynamic.home'),
             url_for('web_dynamic.status'),
+            url_for('web_dynamic.modes'),
+            # API routes
+            url_for('auth.register'),
+            url_for('auth.login'),
             ]
 
         # Check if the user is logged in
