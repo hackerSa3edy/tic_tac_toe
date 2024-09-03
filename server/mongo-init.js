@@ -102,9 +102,9 @@ createCollectionIfNotExists("leaderboard", {
     validator: {
         $jsonSchema: {
             bsonType: "object",
-            required: ["user_id", "wins", "draws", "score"],
+            required: ["username", "wins", "draws", "score"],
             properties: {
-                user_id: { bsonType: "objectId" },
+                username: { bsonType: "string" },
                 wins: { bsonType: "int" },
                 draws: { bsonType: "int" },
                 score: { bsonType: "int" }
@@ -113,10 +113,8 @@ createCollectionIfNotExists("leaderboard", {
     }
 });
 
-db.leaderboard.createIndex({ "user_id": 1 }, { unique: true });
+db.leaderboard.createIndex({ "username": 1 }, { unique: true });
 db.leaderboard.createIndex({ "score": -1 });
-db.leaderboard.createIndex({ "wins": -1 });
-db.leaderboard.createIndex({ "draws": -1 });
 
 // Create a new user for this specific database (if it doesn't exist)
 if (!db.getUser(process.env.MONGO_NON_ROOT_USERNAME)) {
