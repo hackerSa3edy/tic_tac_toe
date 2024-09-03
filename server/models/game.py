@@ -59,11 +59,11 @@ class Game:
     def update_is_draw(self, game_id, is_draw):
         self.games.update_one({'_id': ObjectId(game_id)}, {'$set': {'is_draw': is_draw}})
 
-    def update_player1(self, game_id, player1_id):
-        self.games.update_one({'_id': ObjectId(game_id)}, {'$set': {'players.player1': player1_id}})
+    # def update_player1(self, game_id, player1_id):
+    #     self.games.update_one({'_id': ObjectId(game_id)}, {'$set': {'players.player1': player1_id}})
 
-    def update_player2(self, game_id, player2_id):
-        self.games.update_one({'_id': ObjectId(game_id)}, {'$set': {'players.player2': player2_id}})
+    # def update_player2(self, game_id, player2_id):
+    #     self.games.update_one({'_id': ObjectId(game_id)}, {'$set': {'players.player2': player2_id}})
 
     def get_game(self, game_id):
         return self.games.find_one({'_id': ObjectId(game_id)})
@@ -92,8 +92,9 @@ class Game:
                         }
                     }
                 )
+                return {'_id': str(game['_id']), 'winner': game['players'][winner]}
                 # print('Game ongoing: ', game)
-        return game
+        return False
 
     def search_games_by_player_and_status(self, player_id, statuses):
         game = self.games.find_one({
@@ -150,29 +151,36 @@ class Game:
 
             return {'result': 'win', 'winner': winner_id}
 
-    def delete_all_games(self):
-        return self.games.delete_many({})
+    # def delete_all_games(self):
+    #     return self.games.delete_many({})
 
-    def all_games_by_player(self, player_id):
-        games = self.games.find({
-            '$or': [
-                {'players.player1': player_id},
-                {'players.player2': player_id}
-            ]
-        })
-        return list(games)
+    # def all_games_by_player(self, player_id):
+    #     games = self.games.find({
+    #         '$or': [
+    #             {'players.player1': player_id},
+    #             {'players.player2': player_id}
+    #         ]
+    #     })
+    #     return list(games)
 
-    def all_games_by_status(self, statuses):
-        games = self.games.find({
-            'status': {'$in': [statuses,]}
-        })
-        return list(games)
+    # def all_games_by_status(self, statuses):
+    #     games = self.games.find({
+    #         'status': {'$in': [statuses,]}
+    #     })
+    #     return list(games)
 
-    def get_all_games_paginated(self, page, per_page):
-        total = self.games.count_documents({})
-        games_cursor = self.games.find({}, {'board': 0, 'current_turn': 0, '_id': 0}).skip((page - 1) * per_page).limit(per_page)
-        games = list(games_cursor)
-        return games, total
+    def get_all_games_paginated(self, page, per_page, username=None):
+            query = {}
+            if username:
+                query['$or'] = [
+                    {'players.player1': username},
+                    {'players.player2': username}
+                ]
+
+            total = self.games.count_documents(query)
+            games_cursor = self.games.find(query, {'board': 0, 'current_turn': 0, '_id': 0}).skip((page - 1) * per_page).limit(per_page)
+            games = list(games_cursor)
+            return games, total
 
     @staticmethod
     def check_winner(board):

@@ -11,10 +11,11 @@ from multiplayer_socketIO import socketio
 from models.auth import Auth
 from models.user import User
 from models.game import Game
+from models.leaderboard import Leaderboard
 
 def create_app():
     # Import your modules
-    from api import auth_bp, user_bp, game_bp, init_api
+    from api import auth_bp, user_bp, game_bp, leaderboard_bp, init_api
     from multiplayer_socketIO.events import init_game_model
     from errors import error
     from database import init_db
@@ -53,6 +54,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(user_bp, url_prefix='/api/user')
     app.register_blueprint(game_bp, url_prefix='/api/user')
+    app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
     app.register_blueprint(error)
     app.register_blueprint(web_bp)
 
@@ -65,7 +67,8 @@ def create_app():
     # Initialize API
     auth = Auth(app.db)
     user = User(app.db)
-    init_api(auth, user)
+    leaderboard = Leaderboard(app.db)
+    init_api(auth, user, leaderboard)
 
     # Initialize SocketIO
     socketio.init_app(
@@ -93,7 +96,7 @@ if __name__ == '__main__':
     # app.run(host="127.0.0.1", port="3000", debug=True)
     socketio.run(
         app,
-        host=app.config['HOST_NAME'],
+        host=app.config['HOSTNAME'],
         port=app.config['APP_PORT'],
         debug=app.config['DEBUG'].lower() == 'true',
         )

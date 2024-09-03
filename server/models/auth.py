@@ -2,6 +2,7 @@
 import bcrypt
 from datetime import datetime
 import regex as re
+from .leaderboard import Leaderboard
 
 class Auth:
     """Auth class."""
@@ -9,20 +10,6 @@ class Auth:
     def __init__(self, db):
         """Iniit."""
         self.db = db
-        if not 'users' in db.list_collection_names():
-            c = db['users']
-            c.insert_one({
-                'username': 'admin',
-                'email': 'admin@com',
-                'password': self.hash_password('admin123'),
-                'wins': 100,
-                'losses': 10,
-                'draws': 1,
-                'game_played': 111,
-                'score': 1000,
-                'created_at': datetime.utcnow(),
-                'avatar': 'nopic'
-                })
         self.users = self.db['users']
 
         # Precompile regex patterns using the regex library
@@ -55,7 +42,7 @@ class Auth:
             'game_played': 0,
             'score': 0,
             'created_at': datetime.utcnow(),
-            'avatar': 'nopic'
+            'avatar': ''
         }
         user = self.users.insert_one(data)
         return user

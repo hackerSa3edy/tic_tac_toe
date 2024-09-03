@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request, session
+from . import leaderboard_routes as l
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -43,11 +44,12 @@ def login():
 
 
 @auth_bp.route("/deregister", methods=["POST"])
-def deluser():
+def deregister():
     """Del user."""
     user = session.get('username', None)
     try:
         msg = AUTH.deregister_user(user)
+        l.LEADERBOARD.delete_user(user)
         session.pop('username', None)
         return jsonify({"username": user, "message": msg})
     except ValueError as e:
@@ -55,7 +57,7 @@ def deluser():
 
 
 @auth_bp.route("/register", methods=["POST"])
-def users():
+def register():
     """New user."""
 
     if 'username' in session:
@@ -69,10 +71,11 @@ def users():
     password = data.get("password")
     try:
         AUTH.register_user(email, username, password)
+        l.LEADERBOARD.add_user(username)
         return jsonify({"email": email, "message": "user created"})
     except ValueError as err:
         return jsonify({"message": str(err)}), 400
-        
+
 @auth_bp.route("/api/auth/check-session", methods=["GET"])
 def check_session():
     """Check session status."""
