@@ -11,14 +11,12 @@ const Login: FC = () => {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password }),
-        credentials: 'include', // Include credentials to save cookies, only in cross-origin requests
-        // credentials: 'same-origin', //only for same-origin requests
       });
 
       const data = await response.json();

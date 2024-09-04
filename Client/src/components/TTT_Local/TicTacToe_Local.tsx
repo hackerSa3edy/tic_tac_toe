@@ -68,7 +68,6 @@ const TicTacToe_Local = ({ squares = arr }: Props) => {
             Accept: "application/json",
             // Add other headers if needed, e.g., Authorization
           },
-          credentials: "include", // Include credentials if your session management requires it
         });
 
         if (!response.ok) {

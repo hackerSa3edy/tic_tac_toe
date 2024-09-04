@@ -57,7 +57,7 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
 
   // Socket setup
   useEffect(() => {
-    const newSocket = io("http://localhost:3000/", { withCredentials: true });
+    const newSocket = io("/socket.io", {  });
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
@@ -145,7 +145,6 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          credentials: "include",
         });
 
         if (!response.ok) {

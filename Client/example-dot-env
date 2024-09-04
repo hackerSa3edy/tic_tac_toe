@@ -1,0 +1,4 @@
+# Add the API URL to handle CORS issues in development
+# ref: https://create-react-app.dev/docs/proxying-api-requests-in-development/#configuring-the-proxy-manually
+
+SERVER_API_URL=http://localhost:3000
