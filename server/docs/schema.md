@@ -38,7 +38,7 @@
 - `players`: (object, required): Information about the players.
   - `player1`: (string, required): The username of player 1.
   - `player2`: (string, optional): The username of player 2.
-- `status`:.
+- `status`: (string, required): The status of the game. Possible values: waiting, ongoing, completed.
 - `winner`: (string, optional): The username of the winning player.
 - `loser`: (string, optional): The username of the losing player.
 - `is_draw`: (bool, optional): Indicates if the game ended in a draw.
@@ -46,12 +46,12 @@
 - `created_at`: (date, required): The date when the game was created.
 - `ended_at`: (date, optional): The date when the game ended.
 - `current_turn`: (string, optional): The username of the player whose turn it is.
-- `board`:, `""`.
+- `board`: (array of strings, required): The game board state. Possible values for each cell: X, O, "".
 
 **Indexes:**
 
-- `status`:
-- `status`:
+- `status`
+- `status`, `players.player1`, `players.player2` (composed index)
 - `created_at`: (descending)
 
 ## Leaderboard Collection
