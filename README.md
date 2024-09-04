@@ -2,14 +2,8 @@
 
 ![s1](Client/src/assets/Images/Text_Logo.png)
 
-## Live
-
-- [tictactoe-production-f0a0.up.railway.app](https://tictactoe-production-f0a0.up.railway.app/)
-- [tic-tac-toe.s1cario.tech:3000](http://tic-tac-toe.s1cario.tech:3000)
-- [tic-tac-toe_Sample_video](https://youtu.be/Q6p1YYc5SZM)
-
-
 ## Screenshots
+
 ![s1](.assets/s1.png)
 
 ![s2](.assets/s2.png)
@@ -21,14 +15,12 @@
 1. [Introduction](#introduction)
 2. [Features](#features)
 3. [Technology Stack](#technology-stack)
-4. [Project Structure](#project-structure)
-5. [Setup and Installation](#setup-and-installation)
-6. [Running the Application](#running-the-application)
-7. [API Endpoints](#api-endpoints)
-8. [Socket.IO Events](#socketio-events)
-9. [Database Schema](#database-schema)
-10. [Configuration](#configuration)
-11. [License](#license)
+4. [Database Schema](#database-schema)
+5. [API Endpoints](#api-endpoints)
+6. [Socket.IO Events](#socketio-events)
+7. [Setup and Installation](#setup-and-installation)
+8. [Configuration](#configuration)
+9. [License](#license)
 
 ## Introduction
 
@@ -47,71 +39,105 @@ This project is a multiplayer Tic-Tac-Toe game implemented using Flask for the b
 - Backend: Flask (Python)
 - Database: MongoDB
 - Real-time Communication: Socket.IO
-- Frontend: HTML, CSS, JavaScript (details may vary based on your implementation)
+- Frontend: React, TypeScript, Vite
+- Styling: Tailwind CSS
 - Authentication: Flask sessions
 - WSGI Server: Gunicorn
 - Web Server: Nginx (for production deployment)
+- Containerization: Docker
 
-## Project Structure
+## Database Schema
 
-```text
-tic-tac-toe/
-│
-├── .env
-├── .gitignore
-├── app.py
-├── backend.Dockerfile
-├── database.py
-├── docker-compose.yml
-├── errors.py
-├── example-dotenv-file
-├── middleware.py
-├── requirements.txt
-│
-├── api/
-│ ├── __init__.py
-│ ├── routes/
-│ │ ├── __init__.py
-| | ├── auth_routes.py
-| │ └── game_routes.py
-| |
-| └── utils.py
-│
-├── models/
-│ ├── __init__.py
-│ ├── auth.py
-│ └── game.py
-│
-├── multiplayer_socketIO/
-│ ├── __init__.py
-│ └── events.py
-│
-├── static/
-│ ├── css/
-│ ├── js/
-│ └── images/
-│
-├── templates/
-│
-├── tests/
-│ └── socketclient-test.py
-|
-|
-├── config
-| ├── __init__.py
-│ ├── default.py
-│ ├── development
-│ └── production
-|
-└── README.md
-```
+Refer to the [schema documentation](server/docs/schema.md) for detailed information about the database collections and their schemas.
+
+## API Endpoints
+
+Refer to the [API routes documentation](server/docs/API_routes.md) for detailed information about the available API endpoints, their descriptions, request bodies, and responses.
+
+## Socket.IO Events
+
+### `connect`
+
+- **Description**: Triggered when a client connects to the server.
+- **Behavior**:
+  - Retrieves the player's ID from the session.
+  - If the player is not logged in, emits an error message and denies the connection.
+  - Checks if the player is already in a waiting or ongoing game. If so, emits an error message and denies the connection.
+  - If the player is successfully connected, prints a connection message.
+
+### `disconnect`
+
+- **Description**: Triggered when a client disconnects from the server.
+- **Behavior**:
+  - Retrieves the player's ID from the session.
+  - Handles the disconnection by updating the game state.
+  - If the player was in a game, emits a `game_over` event indicating the opponent's win due to disconnection.
+  - Updates the user's win/loss statistics.
+
+### `join_game`
+
+- **Description**: Triggered when a player joins a game.
+- **Behavior**:
+  - Retrieves the player's ID from the session.
+  - Checks if the player is already in a waiting or ongoing game. If so, emits an error message.
+  - Searches for a waiting game. If found, the player joins the game and the game starts.
+  - If no waiting game is found, creates a new game and the player joins it, waiting for an opponent.
+
+### `make_move`
+
+- **Description**: Triggered when a player makes a move in the game.
+- **Behavior**:
+  - Retrieves the game ID, player ID, and move position from the data.
+  - Validates the game state and the player's turn.
+  - Processes the move and updates the game board.
+  - Emits a `move_made` event to update the game state for all players.
+  - If the game ends event and updates the user and leaderboard statistics accordingly.
+
+### `game_over`
+
+- **Description**: Triggered when the game ends.
+- **Behavior**:
+  - This event is emitted internally by the server when a game concludes due to a win, loss, or draw.
+  - Updates the game state and user statistics.
+  - Notifies all players in the game room about the game result.
 
 ## Setup and Installation
+
+### Using Docker Compose
+
+To set up and run the application using Docker Compose, follow these steps:
+
+1. Ensure you have Docker and Docker Compose installed on your system.
+2. Clone the repository:
+
+   ```sh
+   git clone https://github.com/hackersa3edy/tic_tac_toe.git
+   cd tic-tac-toe
+   ```
+
+3. Create a `.env` file in the server directory to add your environment variables. Refer to the [example file](./server/example-dotenv-file).
+
+4. Run the application using Docker Compose:
+
+   ```sh
+   docker-compose -f docker-compose.yml up --build
+   ```
+
+Using Docker Compose is preferred because:
+
+- **Consistency**: Ensures the application runs in the same environment across different machines.
+- **Isolation**: Keeps the application dependencies isolated from the host system.
+- **Ease of Setup**: Simplifies the setup process by handling dependencies and configurations automatically.
+- **Scalability**: Makes it easier to scale services and manage multiple containers.
+
+### Manual Setup (Without Docker)
+
+If you prefer not to use Docker, follow these steps:
 
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/Justxd22/tic_tac_toe.git
+   git clone https://github.com/hackersa3edy/tic_tac_toe.git
    cd tic-tac-toe
    ```
 
@@ -122,7 +148,7 @@ tic-tac-toe/
    source venv/bin/activate  # On Windows use venv\Scripts\activate
    ```
 
-   For me I'm using virtualenvwrapper, It's cool. Give it a try: [virtualenvwrapper](https://pypi.org/project/virtualenvwrapper/)
+   For me, I'm using virtualenvwrapper. It's cool. Give it a try: [virtualenvwrapper](https://pypi.org/project/virtualenvwrapper/)
 
 3. Install the required packages:
 
@@ -132,79 +158,42 @@ tic-tac-toe/
 
 4. Set up MongoDB:
 
-   - Install MongoDB on your system
-   - Initialize it with username and password, if needed.
+   - Install MongoDB on your system.
+   - Initialize it with a username and password, if needed.
 
 5. Set up environment variables:
-   Create a `.env` file in the root directory to add your env variables. [example file](./server/example-dotenv-file)
+   Create a `.env` file in the server directory to add your environment variables. Refer to the [example file](./server/example-dotenv-file).
 
-## Running the Application
+6. Build the client:
 
-For development:
+   ```sh
+   cd Client
+   npm install
+   npm run build
+   cd ..
+   ```
 
-```sh
-python app.py
-```
+7. Copy the built static files to the server to be served.
 
-<!-- For production, refer to the [Deployment](#deployment) section. -->
+   ```sh
+   cp -r Client/dist/* server/static
+   ```
 
-For production, refer to the Deployment section.
+8. Run the application:
 
-## API Endpoints
+   For development:
 
-- POST `/api/auth/register`: Register a new user
-- POST `/api/auth/login`: User login
-- DELETE `/api/auth/logout`: User logout
-<!-- - POST `/api/auth/deregister`: Delete user account
-- GET `/api/games`: Get list of games
-- POST `/api/games`: Create a new game
-- GET `/api/games/<game_id>`: Get game details
-- GET `/api/leaderboard`: Get leaderboard -->
+   ```sh
+   cd server
+   python app.py
+   ```
 
-## Socket.IO Events
+   For production:
 
-- `connect`: Client connects to the server
-- `disconnect`: Client disconnects from the server
-- `join_game`: Player joins a game
-- `make_move`: Player makes a move
-- `game_over`: Game ends (win, lose, or draw)
-
-## Database Schema
-
-### User Collection
-
-- `_id`: ObjectId
-- `username`: String
-- `email`: String
-- `password`: String (hashed)
-- `wins`: Integer
-- `losses`: Integer
-- `draws`: Integer
-- `game_played`: Integer
-- `score`: Integer
-- `created_at`: DateTime
-- `avatar`: String (URL)
-
-### Game Collection
-
-- `_id`: ObjectId
-- `player1`: ObjectId (ref: User)
-- `player2`: ObjectId (ref: User)
-- `board`: Array
-- `current_turn`: ObjectId (ref: User)
-- `winner`: ObjectId (ref: User)
-- `is_draw`: Boolean
-- `status`: String
-- `created_at`: DateTime
-- `end_at`: DateTime
-
-### Leaderboard Collection
-
-- `_id`: ObjectId
-- `user_id`: ObjectId (ref: User)
-- `wins`: Integer
-- `draws`: Integer
-- `score`: Integer
+   ```sh
+   cd server
+   gunicorn --worker-class eventlet -w 1 app:app --bind 0.0.0.0:3000
+   ```
 
 ## Configuration
 
