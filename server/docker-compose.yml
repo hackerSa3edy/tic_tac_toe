@@ -1,4 +1,5 @@
 name: tic-tac-toe-project
+
 services:
   backend:
     hostname: backend
@@ -9,11 +10,12 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - .env.production
     depends_on:
       - mongodb
+      - client
     volumes:
-      - ./:/app
+      - ./static:/app/static:ro
     command: gunicorn --worker-class eventlet -w 1 app:app --bind 0.0.0.0:3000
 
   mongodb:
@@ -22,6 +24,8 @@ services:
     image: mongo:latest
     ports:
       - "27017:27017"
+    env_file:
+      - .env.production
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
@@ -31,6 +35,19 @@ services:
     volumes:
       - mongodb_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+
+  client:
+    hostname: client
+    container_name: client
+    build:
+      context: ../Client
+      dockerfile: client.Dockerfile
+    volumes:
+      - ../server/static:/app/dist
+    env_file:
+      - ../Client/.env
+    command: >
+      sh -c "rm -rf /app/dist/* && npm run build"
 
 volumes:
   mongodb_data:

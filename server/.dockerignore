@@ -1,0 +1,71 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+flask_session/
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Version control
+.git/
+.gitignore
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Test cache
+.pytest_cache/
+.coverage
+
+# Database
+*.sqlite3
+
+# Static file collection
+staticfiles/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Docker files (to avoid recursive copying)
+*Dockerfile
+docker-compose.yml
+
+# Documentation
+docs/
+*.md
+
+# Configuration files that might contain sensitive information
+config/*.json
+config/*.yml
+config/*.yaml
+
+# Backup files
+*.bak
+
+# Any compiled Python files
+*.pyc
+
+# Ignore the client-side static files if they're in the server directory
+static/
