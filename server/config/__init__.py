@@ -1,6 +1,4 @@
 import os
-from .development import DevelopmentConfig
-
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -11,4 +9,6 @@ def get_config():
     if env == 'production':
         from .production import ProductionConfig
         return ProductionConfig
+
+    from .development import DevelopmentConfig
     return DevelopmentConfig
