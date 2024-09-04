@@ -115,7 +115,7 @@ To set up and run the application using Docker Compose, follow these steps:
    cd tic-tac-toe
    ```
 
-3. Create a `.env` file in the server directory to add your environment variables. Refer to the [example file](./server/example-dotenv-file).
+3. Create a `.env` file in the server directory to add your environment variables. Refer to the [example file](./server/example-dotenv-file.md).
 
 4. Run the application using Docker Compose:
 
@@ -162,7 +162,7 @@ If you prefer not to use Docker, follow these steps:
    - Initialize it with a username and password, if needed.
 
 5. Set up environment variables:
-   Create a `.env` file in the server directory to add your environment variables. Refer to the [example file](./server/example-dotenv-file).
+   Create a `.env` file in the server directory to add your environment variables. Refer to the [example file](./server/example-dotenv-file.md).
 
 6. Build the client:
 
