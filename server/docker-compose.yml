@@ -10,7 +10,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.production
+      - .env
     depends_on:
       - mongodb
       - client
@@ -24,8 +24,6 @@ services:
     image: mongo:latest
     ports:
       - "27017:27017"
-    env_file:
-      - .env.production
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
@@ -44,8 +42,6 @@ services:
       dockerfile: client.Dockerfile
     volumes:
       - ../server/static:/app/dist
-    env_file:
-      - ../Client/.env
     command: >
       sh -c "rm -rf /app/dist/* && npm run build"
 

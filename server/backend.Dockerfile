@@ -22,4 +22,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 3000
 
-CMD ["python", "app.py"]
+# Run the application using Gunicorn
+CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "app:app", "--bind", "0.0.0.0:3000"]

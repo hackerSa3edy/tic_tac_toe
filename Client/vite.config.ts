@@ -6,6 +6,10 @@ import dotenv from 'dotenv'
 // load environment variables
 dotenv.config()
 
+if (process.env.NODE_ENV === 'development' && !process.env.SERVER_API_URL) {
+  throw new Error('SERVER_API_URL is not defined in development mode');
+}
+
 export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
