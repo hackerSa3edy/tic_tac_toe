@@ -2,6 +2,14 @@ from .default import BaseConfig
 import os
 
 class DevelopmentConfig(BaseConfig):
+    HOSTNAME = os.getenv("HOST_NAME", None)
+    APP_PORT = os.getenv("APP_PORT", None)
+
+    if HOSTNAME is None:
+        raise ValueError("No HOST_NAME set for Flask application")
+    elif APP_PORT is None:
+        raise ValueError("No APP_PORT set for Flask application")
+
     DEBUG = os.getenv("DEBUG", True)
     SECRET_KEY = os.getenv("SECRET_KEY", "Flask-tic_tac_toe")
     CORS_CONFIG = {
