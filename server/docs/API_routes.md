@@ -91,9 +91,6 @@
 ### `GET /api/leaderboard/`
 
 - **Description**: Retrieve the leaderboard.
-- **Query Parameters**:
-  - `username` (string): The username of the current player.
 - **Responses**:
-  - `400 Bad Request`: If the username is not provided.
-  - `404 Not Found`: If the user is not found.
+  - `400 Bad Request`: If the user is not logged in.
   - `200 OK`: Returns the top players and the current player's stats and rank.
