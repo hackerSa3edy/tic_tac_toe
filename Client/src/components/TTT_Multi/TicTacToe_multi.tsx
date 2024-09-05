@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
 import styled from "styled-components";
@@ -44,9 +44,6 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
   // State
   const [gameState, setGameState] = useState(GAME_STATES.waiting);
   const [playerSymbol, setPlayerSymbol] = useState<number | null>(null);
-  const [opponentSymbol, setOpponentSymbol] = useState<number | null>(null);
-  const [opponent, setOpponent] = useState<string | null>(null);
-  const [currentTurn, setCurrentTurn] = useState<number | null>(null);
   const [grid, setGrid] = useState(squares);
   const [winner, setWinner] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -55,14 +52,23 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
   const [error, setError] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
+  const opponentSymbolRef = useRef<number | null>(null);
+  const opponentRef = useRef<string | null>(null);
+  const currentTurnRef = useRef<number | null>(null);
+  const gameStateRef = useRef(gameState)
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
 
   useEffect(() => {
     console.log("--------------------- TicTacToe_multi ---------------------");
     console.log("Game State: ", gameState);
     console.log("Player Symbol: ", playerSymbol);
-    console.log("Opponent Symbol: ", opponentSymbol);
-    console.log("Opponent: ", opponent);
-    console.log("Current Turn: ", currentTurn);
+    console.log("Opponent Symbol: ", opponentSymbolRef.current);
+    console.log("Opponent: ", opponentRef.current);
+    console.log("Current Turn: ", currentTurnRef.current);
     console.log("Winner: ", winner);
     console.log("Modal Open: ", modalOpen);
     console.log("Game ID: ", gameId);
@@ -71,9 +77,9 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
   }, [
     gameState,
     playerSymbol,
-    opponentSymbol,
-    opponent,
-    currentTurn,
+    opponentSymbolRef.current,
+    opponentRef.current,
+    currentTurnRef.current,
     winner,
     modalOpen,
     gameId,
@@ -101,35 +107,34 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
     };
 
     const handleOpponentJoined = (data: { opponent: string }) => {
-      setOpponent(data.opponent);
-      setOpponentSymbol(PLAYER_O);
+      opponentRef.current = data.opponent;
+      opponentSymbolRef.current = PLAYER_O;
       setGameState(GAME_STATES.inProgress);
-      setCurrentTurn(PLAYER_X);
+      currentTurnRef.current = PLAYER_X;
       console.log("handleOpponentJoined");
     };
 
     const handleGameStarted = (data: { game_id: string; opponent: string }) => {
       setGameId(data.game_id);
-      setOpponentSymbol(PLAYER_X);
+      opponentSymbolRef.current = PLAYER_X;
       setPlayerSymbol(PLAYER_O);
-      setCurrentTurn(PLAYER_X);
-      setOpponent(data.opponent);
+      currentTurnRef.current = PLAYER_X;
+      opponentRef.current = data.opponent;
       setGameState(GAME_STATES.inProgress);
       console.log("handleGameStarted");
     };
 
     const handleMoveMade = (data: { position: number }) => {
-      console.log("Move made by opponent", opponentSymbol);
-      move(data.position, opponentSymbol);
-      setCurrentTurn(currentTurn => currentTurn === PLAYER_X ? PLAYER_O : PLAYER_X);
+      console.log("Move made by opponent", opponentSymbolRef.current);
+      move(data.position, opponentSymbolRef.current);
+      currentTurnRef.current = currentTurnRef.current === PLAYER_X ? PLAYER_O : PLAYER_X;
       console.log("handleMoveMade");
     };
 
     const handleGameOver = (data: { result: string; winner: string }) => {
+      setWinner(data.result === 'draw' ? 'draw' : (data.winner === opponentRef.current ? opponentRef.current : 'You') + ' won!');
       setGameState(GAME_STATES.over);
-      setWinner(data.result === 'draw' ? 'draw' : (data.winner === opponent ? opponent : 'You') + ' won!');
       console.log("handleGameOver");
-      socket.disconnect();
     };
 
     socket.on("connect", setupGame);
@@ -192,18 +197,16 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
     board.getWinner(grid);
 
     if (gameState === GAME_STATES.over) {
-    //   const winnerStr = boardWinner === DRAW ? "It's a draw" : `Player ${boardWinner === PLAYER_X ? 'X' : 'O'} wins!`;
-      setWinner(winner);
       setTimeout(() => setModalOpen(true), 300);
     }
-  }, [gameState]);
+  }, [gameState, grid]);
 
   // Sound effects
   useEffect(() => {
-    if (currentTurn !== null) {
+    if (currentTurnRef.current !== null) {
       clickSound.play();
     }
-  }, [currentTurn]);
+  }, [currentTurnRef.current]);
 
   useEffect(() => {
     if (gameState !== GAME_STATES.inProgress) {
@@ -214,24 +217,23 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
   // Move function
   const move = useCallback(
     (index: number, player: number | null) => {
-      console.log("Move made ", index, player);
-      if (player !== null && gameState === GAME_STATES.inProgress) {
+    console.log("Move made ", index, player);
+    console.log("Game State: ", gameStateRef.current, player, " made a move at ", index);
+    if (player !== null && gameStateRef.current === GAME_STATES.inProgress) {
         setGrid(grid => {
-          const gridCopy = grid.concat();
-          gridCopy[index] = player;
-          return gridCopy;
+        const gridCopy = grid.concat();
+        gridCopy[index] = player;
+        return gridCopy;
         });
-      }
-    },
-    [gameState]
-  );
+    }
+  }, [gameState]);
 
   // Human move function
   const humanMove = (index: number) => {
-    if (!grid[index] && currentTurn === playerSymbol) {
+    if (!grid[index] && currentTurnRef.current === playerSymbol) {
       console.log("MOVE_VALID", index, playerSymbol);
       move(index, playerSymbol);
-      setCurrentTurn(playerSymbol === PLAYER_O ? PLAYER_X : PLAYER_O);
+      currentTurnRef.current = playerSymbol === PLAYER_O ? PLAYER_X : PLAYER_O;
 
       if (socketRef.current) {
         socketRef.current.emit("make_move", { position: index, game_id: gameId });
