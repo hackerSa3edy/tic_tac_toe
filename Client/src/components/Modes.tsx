@@ -1,14 +1,11 @@
 import "../assets/stylesheets/Modes.css";
 import { FC } from "react";
-import { useNavigate } from "react-router-dom";
 import Logo from "../assets/Images/Text_Logo.png";
 
 const Modes: FC = () => {
-  const navigate = useNavigate();
-
   const handleModeSelect = (path: string) => {
       const absolutePath = path.startsWith("/") ? path : `/${path}`;
-      navigate(absolutePath);
+      window.location.href = absolutePath;
   };
 
   return (

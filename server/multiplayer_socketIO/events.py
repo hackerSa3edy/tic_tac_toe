@@ -8,6 +8,8 @@ import api.routes.leaderboard_routes as l
 
 @socketio.on('connect')
 def handle_connect():
+    print('Player trying to connect', request.sid)
+
     player_id = session.get('username', None)
 
     if player_id is None:
@@ -23,8 +25,15 @@ def handle_connect():
     print('Client connected', request.sid, player_id)
     return True
 
+@socketio.on('connect_error')
+def handle_connect_error(e):
+    print('Error connecting', e)
+
+
 @socketio.on('join_game')
 def handle_join_game():
+    print('player trying to join game', request.sid)
+
     player_id = session.get('username', None)
     print('Join game', player_id)
 
@@ -50,6 +59,7 @@ def handle_join_game():
 
 @socketio.on('make_move')
 def handle_make_move(data):
+    print('Player trying to make move', request.sid, session.get('username'))
     print('Make move', data)
     try:
         game_id = ObjectId(data['game_id'])
@@ -88,6 +98,8 @@ def handle_make_move(data):
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    print('Player trying to disconnect', request.sid)
+
     player_id = session.get('username')
     print('Client disconnected', request.sid, player_id)
     game = GAMES.handle_disconnect(player_id)

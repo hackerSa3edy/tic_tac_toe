@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
 import styled from "styled-components";
@@ -50,43 +50,54 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
   const [grid, setGrid] = useState(squares);
   const [winner, setWinner] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [gameId, setGameId] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Socket setup
+  const socketRef = useRef<Socket | null>(null);
+
   useEffect(() => {
-    const newSocket = io("/socket.io", {  });
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => {
-      console.log("Socket connection established. ID:", newSocket.id);
-    });
-
-    newSocket.on('error', (data) => {
-      setError(data.message);
-    });
-
-    return () => {
-      newSocket.close();
-    };
-  }, []);
+    console.log("--------------------- TicTacToe_multi ---------------------");
+    console.log("Game State: ", gameState);
+    console.log("Player Symbol: ", playerSymbol);
+    console.log("Opponent Symbol: ", opponentSymbol);
+    console.log("Opponent: ", opponent);
+    console.log("Current Turn: ", currentTurn);
+    console.log("Winner: ", winner);
+    console.log("Modal Open: ", modalOpen);
+    console.log("Game ID: ", gameId);
+    console.log("Error: ", error);
+    console.log("Socket: ", socketRef.current);
+  }, [
+    gameState,
+    playerSymbol,
+    opponentSymbol,
+    opponent,
+    currentTurn,
+    winner,
+    modalOpen,
+    gameId,
+    error,
+    socketRef.current
+  ]);
 
   // Game logic
   useEffect(() => {
-    if (!socket) return;
+    // Socket setup
+    const socket = io("/");
+    socketRef.current = socket;
 
     const setupGame = () => {
-      socket.emit("join_game");
+      console.log("Socket connection established. ID:", socket.id);
       console.log("Joining game...");
+      socket.emit("join_game");
     };
 
     const handleGameJoined = (data: { game_id: string }) => {
       setGameId(data.game_id);
       setPlayerSymbol(PLAYER_X);
       setGameState(GAME_STATES.waiting);
-      console.log("You: ", PLAYER_X, "Game id: ", data.game_id);
+      console.log("handleGameJoined");
     };
 
     const handleOpponentJoined = (data: { opponent: string }) => {
@@ -94,7 +105,7 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
       setOpponentSymbol(PLAYER_O);
       setGameState(GAME_STATES.inProgress);
       setCurrentTurn(PLAYER_X);
-      console.log("opponent: ", PLAYER_O);
+      console.log("handleOpponentJoined");
     };
 
     const handleGameStarted = (data: { game_id: string; opponent: string }) => {
@@ -104,36 +115,45 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
       setCurrentTurn(PLAYER_X);
       setOpponent(data.opponent);
       setGameState(GAME_STATES.inProgress);
-      console.log("Game id: ", data.game_id, "You: ", PLAYER_O, "opponent: ", PLAYER_X);
+      console.log("handleGameStarted");
     };
 
     const handleMoveMade = (data: { position: number }) => {
       console.log("Move made by opponent", opponentSymbol);
       move(data.position, opponentSymbol);
       setCurrentTurn(currentTurn => currentTurn === PLAYER_X ? PLAYER_O : PLAYER_X);
+      console.log("handleMoveMade");
     };
 
     const handleGameOver = (data: { result: string; winner: string }) => {
       setGameState(GAME_STATES.over);
       setWinner(data.result === 'draw' ? 'draw' : (data.winner === opponent ? opponent : 'You') + ' won!');
+      console.log("handleGameOver");
+      socket.disconnect();
     };
 
-    setupGame();
-
+    socket.on("connect", setupGame);
     socket.on('game_joined', handleGameJoined);
     socket.on('opponent_joined', handleOpponentJoined);
     socket.on('game_started', handleGameStarted);
     socket.on("move_made", handleMoveMade);
     socket.on('game_over', handleGameOver);
 
+    socket.on('error', (data) => {
+      setError(data.message);
+    });
+
     return () => {
+      socket.off("connect");
       socket.off("game_joined");
       socket.off("opponent_joined");
       socket.off("game_started");
       socket.off("move_made");
       socket.off("game_over");
+      socket.off("error");
+      socket.close();
     };
-  }, [socket, opponent, opponentSymbol]);
+  }, []);
 
   // User profile fetch
   useEffect(() => {
@@ -194,6 +214,7 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
   // Move function
   const move = useCallback(
     (index: number, player: number | null) => {
+      console.log("Move made ", index, player);
       if (player !== null && gameState === GAME_STATES.inProgress) {
         setGrid(grid => {
           const gridCopy = grid.concat();
@@ -212,8 +233,8 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
       move(index, playerSymbol);
       setCurrentTurn(playerSymbol === PLAYER_O ? PLAYER_X : PLAYER_O);
 
-      if (socket) {
-        socket.emit("make_move", { position: index, game_id: gameId });
+      if (socketRef.current) {
+        socketRef.current.emit("make_move", { position: index, game_id: gameId });
       }
     }
   };
@@ -224,8 +245,8 @@ const TicTacToe_multi: React.FC<Props> = ({ squares = INITIAL_GRID }) => {
     setGrid(INITIAL_GRID);
     setModalOpen(false);
 
-    if (socket) {
-      socket.emit("join_game");
+    if (socketRef.current) {
+      socketRef.current.emit("join_game");
       console.log("Rejoining game...");
     }
   };

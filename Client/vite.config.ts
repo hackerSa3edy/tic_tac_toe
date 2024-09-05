@@ -28,6 +28,7 @@ export default defineConfig(({ mode }) => {
         },
         '/socket.io': {
           target: process.env.SERVER_API_URL,
+          ws: true,
         },
       } : undefined,
     },
