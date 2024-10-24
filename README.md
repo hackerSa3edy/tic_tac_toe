@@ -1,4 +1,4 @@
-# Tic-Tac-Toe Game (NOT yet completed)
+# Tic-Tac-Toe Game
 
 ![s1](Client/src/assets/Images/Text_Logo.png)
 
@@ -14,13 +14,14 @@
 
 1. [Introduction](#introduction)
 2. [Features](#features)
-3. [Technology Stack](#technology-stack)
-4. [Database Schema](#database-schema)
-5. [API Endpoints](#api-endpoints)
-6. [Socket.IO Events](#socketio-events)
-7. [Setup and Installation](#setup-and-installation)
-8. [Configuration](#configuration)
-9. [License](#license)
+3. [Usage](#usage)
+4. [Technology Stack](#technology-stack)
+5. [Database Schema](#database-schema)
+6. [API Endpoints](#api-endpoints)
+7. [Socket.IO Events](#socketio-events)
+8. [Setup and Installation](#setup-and-installation)
+9. [Configuration](#configuration)
+10. [License](#license)
 
 ## Introduction
 
@@ -33,6 +34,50 @@ This project is a multiplayer Tic-Tac-Toe game implemented using Flask for the b
 - Leaderboard system
 - Game history tracking
 - Responsive design for various screen sizes
+
+## Usage
+
+The Tic-Tac-Toe game can be played in three different modes: Local, Multiplayer, and AI. Below are the details for each mode:
+
+### Local Mode
+
+In Local Mode, two players can play the game on the same device. Each player takes turns to make a move. The game board is displayed on the screen, and players can click on the cells to place their markers (X or O). The game continues until one player wins or the game ends in a draw.
+
+To play in Local Mode:
+
+1. Open the game on your device.
+2. Select the "Local" option from the main menu.
+3. The game board will be displayed, and Player X will make the first move.
+4. Players take turns to make their moves by clicking on the cells.
+5. The game will automatically detect a win or a draw and display the result.
+
+### Multiplayer Mode
+
+In Multiplayer Mode, players can play the game against each other online. The game uses Socket.IO for real-time communication between players. Each player needs to be connected to the internet and logged in to play in this mode.
+
+To play in Multiplayer Mode:
+
+1. Open the game on your device.
+2. Select the "Multiplayer" option from the main menu.
+3. Log in with your credentials or register if you don't have an account.
+4. The game will search for an available opponent. If an opponent is found, the game will start.
+5. Players take turns to make their moves. The game board will be updated in real-time for both players.
+6. The game will automatically detect a win or a draw and display the result.
+
+### AI Mode
+
+In AI Mode, players can play the game against an AI algorithm. The AI uses the Minimax algorithm to make its moves. Players can choose the difficulty level (easy, medium, or difficult) before starting the game.
+
+To play in AI Mode:
+
+1. Open the game on your device.
+2. Select the "AI" option from the main menu.
+3. Choose the difficulty level (easy, medium, or difficult).
+4. The game board will be displayed, and Player X will make the first move.
+5. Players take turns to make their moves by clicking on the cells. The AI will make its move after the player.
+6. The game will automatically detect a win or a draw and display the result.
+
+Each mode provides a unique experience, allowing players to enjoy the game in different ways. Whether you want to play with a friend on the same device, challenge someone online, or test your skills against an AI, this Tic-Tac-Toe game has you covered.
 
 ## Technology Stack
 
